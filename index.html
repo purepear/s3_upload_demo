@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test S3 Upload</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+</head>
+<body>
+  <div id="app">
+    <input type="file" name="upload" @change="upload" />
+    <br />
+    <img v-if="uploadedUrl" :src="uploadedUrl" />
+  </div>
+
+  <script>
+    // CHANGE
+    const CLIENT_AWS_BUCKET = ''
+    const CLIENT_USER_ID = ''
+    const CLIENT_UPLOAD_PATH = ''
+    ///////////////////////////////////////////////////////////////
+
+    const app = new Vue({
+      el: '#app',
+      data: {
+        uploadedUrl: ''
+      },
+      methods: {
+        async upload(event) {
+          const file = event.target.files[0]
+          const filename = `test_${new Date().getTime()}.jpeg`
+          const bucket = CLIENT_AWS_BUCKET
+          const key = `${CLIENT_USER_ID}/${CLIENT_UPLOAD_PATH}/${filename}`
+
+          // Get signed URL
+          // TODO: use encodeURIComponent or the new URL() sytax for params
+          const signedUrlResponse = await fetch(`/signed-url?bucket=${bucket}&type=${file.type}&key=${key}`, {
+            method: 'GET'
+          })
+          const signedUrl = await signedUrlResponse.text()
+
+          // Upload image directly to S3
+          const result = await fetch(signedUrl, {
+            method: 'PUT',
+            body: file,
+            headers: {
+              'x-amz-acl': undefined,
+              'x-amz-tagging': 'userUpload=1',
+            },
+          })
+
+          // Show uploaded image
+          this.uploadedUrl = `https://${bucket}.s3.amazonaws.com/${key}`
+        }
+      }
+    })
+  </script>
+</body>
+</html>
